@@ -53,7 +53,7 @@ GAS Editor の **プロジェクト設定 > スクリプト プロパティ** �
 | `SLACK_USER_TOKEN` | User OAuth Token (`xoxp-...`) — `search.messages` / `conversations.info` / `conversations.history` 用                                         |
 | `TARGET_CHANNELS`  | 監視対象のチャンネル ID をカンマ区切り (例: `C0123ABC,C0456DEF`)。空のまま起動して、新規チャンネルで `@thread-expander on` させて増やしても可 |
 | `SELF_BOT_ID`      | Bot 自身が投稿した permalink を二重展開しないためのガード。**未設定なら起動時に `auth.test` で自己取得して保存する**                          |
-| `SELF_USER_ID`     | on/off メンションと未登録チャンネル自動追加で必要な Bot User ID (`U...`)。GAS Editor で `whoami` を実行してログから取得する                   |
+| `SELF_USER_ID`     | on/off メンションと未登録チャンネル自動追加で必要な Bot User ID (`U...`)。**未設定なら起動時に `auth.test` で自己取得して保存する**           |
 
 ### 5. トリガーを登録
 
@@ -85,8 +85,7 @@ GAS Editor から `main` を手動実行し、実行ログでチャンネルご�
 
 ### 前提
 
-- `SELF_USER_ID` を Script Properties に設定すること（メンションテキスト `<@U...>` のマッチングに必要）
-- `SELF_BOT_ID` は未設定でも起動時に `auth.test` で自動取得・保存される（手動で `whoami` を叩く必要はない）
+- `SELF_USER_ID` / `SELF_BOT_ID` は未設定でも起動時に `auth.test` で自動取得・保存される（手動で `whoami` を叩く必要はない）
 - 既に運用中で本機能を導入する場合、移行期間中は各チャンネルで一度 `@thread-expander on` を投げる必要がある
 
 ## 新規チャンネルでの自動追加
@@ -114,10 +113,10 @@ Script Properties を手で書き換える必要がなくなる。
 
 ## Bot 自身の ID を確認する
 
-通常運用では `SELF_BOT_ID` は起動時に自動取得されるため設定不要。
+通常運用では `SELF_BOT_ID` / `SELF_USER_ID` は起動時に自動取得されるため設定不要。
 手動で値を確認したい場合は `whoami` 関数を提供する。
 GAS Editor で `whoami` を 1 度実行すると、Bot Token に対する `auth.test` の結果が
-実行ログに `SELF_BOT_ID: B0xxxxxxx` の形で出る。
+実行ログに `SELF_BOT_ID: B0xxxxxxx` / `SELF_USER_ID: U0xxxxxxx` の形で出る。
 
 ## 過去投稿の一括削除
 
