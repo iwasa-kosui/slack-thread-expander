@@ -86,6 +86,7 @@ const buildMocks = (
         url: undefined,
       }),
     getChannelRecentMessages: () => Result.succeed({ messages: [], truncated: false }),
+    searchMentions: () => Result.succeed({ matches: [] }),
   };
   const clock: ClockPort = {
     nowMs: () => 0,

@@ -1,4 +1,5 @@
 import { ChannelCleanupOutcome } from '../domain/channel-cleanup-outcome.ts';
+import type { ChannelRegistryPort } from '../domain/channel-registry-port.ts';
 import type { ClockPort } from '../domain/clock-port.ts';
 import type { Config } from '../domain/config.ts';
 import type { LockPort } from '../domain/lock-port.ts';
@@ -10,6 +11,7 @@ import { cleanupChannel } from './cleanup-channel.ts';
 
 export type RunCleanupDeps = Readonly<{
   slack: SlackPort;
+  channelRegistry: ChannelRegistryPort;
   clock: ClockPort;
   lock: LockPort;
   logger: LoggerPort;
@@ -37,7 +39,8 @@ const sum = (
 
 const runBody = (deps: RunCleanupDeps, config: Config): void => {
   const startMs = deps.clock.nowMs();
-  if (config.targetChannels.length === 0) {
+  const targetChannels = deps.channelRegistry.list();
+  if (targetChannels.length === 0) {
     deps.logger.warn(
       'TARGET_CHANNELS is empty. Set channel IDs (comma-separated) in Script Properties.',
     );
@@ -50,12 +53,12 @@ const runBody = (deps: RunCleanupDeps, config: Config): void => {
     return;
   }
   deps.logger.info(
-    `cleanup start: channels=[${config.targetChannels.join(',')}] selfBotId=${config.selfBotId}`,
+    `cleanup start: channels=[${targetChannels.join(',')}] selfBotId=${config.selfBotId}`,
   );
 
   const cleanup = cleanupChannel({ slack: deps.slack, logger: deps.logger });
 
-  const outcomes = config.targetChannels.map((channel) => {
+  const outcomes = targetChannels.map((channel) => {
     const outcome = cleanup(channel, config.selfBotId);
     deps.logger.info(formatOutcomeSummary(outcome));
     return outcome;
@@ -68,7 +71,7 @@ const runBody = (deps: RunCleanupDeps, config: Config): void => {
   const elapsedMs = deps.clock.nowMs() - startMs;
 
   deps.logger.info(
-    `cleanup end: channels=${config.targetChannels.length} scanned=${totalScanned} deleted=${totalDeleted} failed=${totalFailed} listErrors=${totalListErrors} elapsedMs=${elapsedMs}`,
+    `cleanup end: channels=${targetChannels.length} scanned=${totalScanned} deleted=${totalDeleted} failed=${totalFailed} listErrors=${totalListErrors} elapsedMs=${elapsedMs}`,
   );
 };
 
