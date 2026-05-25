@@ -4,10 +4,12 @@ export type ControlCommand =
   | Readonly<{ kind: 'NotForUs' }>
   | Readonly<{ kind: 'On' }>
   | Readonly<{ kind: 'Off' }>
+  | Readonly<{ kind: 'Help' }>
   | Readonly<{ kind: 'Unknown'; rest: string }>;
 
 const ON_KEYWORDS: ReadonlySet<string> = new Set(['on', 'オン']);
 const OFF_KEYWORDS: ReadonlySet<string> = new Set(['off', 'オフ']);
+const HELP_KEYWORDS: ReadonlySet<string> = new Set(['help', 'ヘルプ']);
 
 const stripMentions = (text: string, userId: UserId): string => {
   const pattern = new RegExp(`<@${userId}(?:\\|[^>]*)?>`, 'g');
@@ -25,6 +27,7 @@ const parse = (text: string | undefined, userId: UserId): ControlCommand => {
   const cleaned = stripMentions(text, userId).trim().toLowerCase();
   if (ON_KEYWORDS.has(cleaned)) return { kind: 'On' };
   if (OFF_KEYWORDS.has(cleaned)) return { kind: 'Off' };
+  if (HELP_KEYWORDS.has(cleaned)) return { kind: 'Help' };
   return { kind: 'Unknown', rest: cleaned };
 };
 
