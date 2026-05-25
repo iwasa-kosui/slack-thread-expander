@@ -1,5 +1,5 @@
 import type { ChannelControlPort } from '../domain/channel-control-port.ts';
-import type { ChannelDiscoveryOutcome } from '../domain/channel-discovery-outcome.ts';
+import { ChannelDiscoveryOutcome } from '../domain/channel-discovery-outcome.ts';
 import type { ChannelRegistryPort } from '../domain/channel-registry-port.ts';
 import { ChannelTickOutcome } from '../domain/channel-tick-outcome.ts';
 import type { ClockPort } from '../domain/clock-port.ts';
@@ -56,7 +56,7 @@ const formatDiscoverySummary = (outcome: ChannelDiscoveryOutcome): string => {
     case 'SearchFailed':
       return `discovery: search.messages failed - ${SlackApiError.format(outcome.error)}`;
     case 'Processed':
-      return `discovery: added=${outcome.discovered.length} channels=[${
+      return `discovery: added=${ChannelDiscoveryOutcome.addedCount(outcome)} channels=[${
         outcome.discovered.map((d) => d.channel).join(',')
       }]`;
     default:
