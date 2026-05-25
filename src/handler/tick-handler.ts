@@ -8,6 +8,7 @@ import { GasLockService } from '../adaptor/gas/gas-lock-service.ts';
 import { GasPropertiesChannelControlStore } from '../adaptor/gas/gas-properties-channel-control-store.ts';
 import { GasPropertiesChannelRegistryStore } from '../adaptor/gas/gas-properties-channel-registry-store.ts';
 import { GasPropertiesCursorStore } from '../adaptor/gas/gas-properties-cursor-store.ts';
+import { GasPropertiesDiscoveryCursorStore } from '../adaptor/gas/gas-properties-discovery-cursor-store.ts';
 import { SlackHttpClient } from '../adaptor/slack/slack-http-client.ts';
 import { ConfigError } from '../domain/config-error.ts';
 import { runTick } from '../usecase/run-tick.ts';
@@ -25,7 +26,17 @@ export const tickHandler = (): void => {
   const cursor = GasPropertiesCursorStore.create();
   const channelControl = GasPropertiesChannelControlStore.create();
   const channelRegistry = GasPropertiesChannelRegistryStore.create(logger);
+  const discoveryCursor = GasPropertiesDiscoveryCursorStore.create();
   const clock = GasClock.create();
   const lock = GasLockService.create();
-  runTick({ slack, cursor, channelControl, channelRegistry, clock, lock, logger })(resolvedConfig);
+  runTick({
+    slack,
+    cursor,
+    channelControl,
+    channelRegistry,
+    discoveryCursor,
+    clock,
+    lock,
+    logger,
+  })(resolvedConfig);
 };

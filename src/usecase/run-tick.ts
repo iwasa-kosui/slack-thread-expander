@@ -5,6 +5,7 @@ import { ChannelTickOutcome } from '../domain/channel-tick-outcome.ts';
 import type { ClockPort } from '../domain/clock-port.ts';
 import type { Config } from '../domain/config.ts';
 import type { CursorPort } from '../domain/cursor-port.ts';
+import type { DiscoveryCursorPort } from '../domain/discovery-cursor-port.ts';
 import type { LockPort } from '../domain/lock-port.ts';
 import type { LoggerPort } from '../domain/logger-port.ts';
 import { SlackApiError } from '../domain/slack-api-error.ts';
@@ -19,6 +20,7 @@ export type RunTickDeps = Readonly<{
   cursor: CursorPort;
   channelControl: ChannelControlPort;
   channelRegistry: ChannelRegistryPort;
+  discoveryCursor: DiscoveryCursorPort;
   clock: ClockPort;
   lock: LockPort;
   logger: LoggerPort;
@@ -56,9 +58,9 @@ const formatDiscoverySummary = (outcome: ChannelDiscoveryOutcome): string => {
     case 'SearchFailed':
       return `discovery: search.messages failed - ${SlackApiError.format(outcome.error)}`;
     case 'Processed':
-      return `discovery: added=${ChannelDiscoveryOutcome.addedCount(outcome)} channels=[${
-        outcome.discovered.map((d) => d.channel).join(',')
-      }]`;
+      return `discovery: added=${ChannelDiscoveryOutcome.addedCount(outcome)} helpReplied=${
+        ChannelDiscoveryOutcome.helpRepliedCount(outcome)
+      } channels=[${outcome.discovered.map((d) => `${d.kind}:${d.channel}`).join(',')}]`;
     default:
       return assertNever(outcome);
   }
@@ -72,12 +74,15 @@ const sum = (
 const runBody = (deps: RunTickDeps, config: Config): void => {
   const tickStartMs = deps.clock.nowMs();
 
-  // 1) 未登録チャンネルでの `@bot on` メンションを拾い、TARGET_CHANNELS に追加する。
+  // 1) 未登録チャンネルでの `@bot on` / `@bot help` メンションを拾う。
+  // on は TARGET_CHANNELS に追加して有効化、help は登録せず案内のみ返す。
   // search.messages 失敗時は WARN を吐いて続行する（既存チャンネルの処理は止めない）。
   const discoveryOutcome = discoverOnMentionedChannels({
     slack: deps.slack,
     channelRegistry: deps.channelRegistry,
     channelControl: deps.channelControl,
+    discoveryCursor: deps.discoveryCursor,
+    clock: deps.clock,
     logger: deps.logger,
   })(config.selfUserId);
   deps.logger.info(formatDiscoverySummary(discoveryOutcome));
