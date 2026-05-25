@@ -3,6 +3,7 @@ import { Result } from '@praha/byethrow';
 import { loadGasBootstrap } from '../adaptor/gas/gas-bootstrap.ts';
 import { GasClock } from '../adaptor/gas/gas-clock.ts';
 import { GasConsoleLogger } from '../adaptor/gas/gas-console-logger.ts';
+import { ensureSelfBotId } from '../adaptor/gas/gas-ensure-self-bot-id.ts';
 import { GasLockService } from '../adaptor/gas/gas-lock-service.ts';
 import { GasPropertiesChannelControlStore } from '../adaptor/gas/gas-properties-channel-control-store.ts';
 import { GasPropertiesCursorStore } from '../adaptor/gas/gas-properties-cursor-store.ts';
@@ -19,9 +20,10 @@ export const tickHandler = (): void => {
   }
   const { slackCredentials, config } = bootRes.value;
   const slack = SlackHttpClient.create(slackCredentials);
+  const resolvedConfig = ensureSelfBotId(slack, config, logger);
   const cursor = GasPropertiesCursorStore.create();
   const channelControl = GasPropertiesChannelControlStore.create();
   const clock = GasClock.create();
   const lock = GasLockService.create();
-  runTick({ slack, cursor, channelControl, clock, lock, logger })(config);
+  runTick({ slack, cursor, channelControl, clock, lock, logger })(resolvedConfig);
 };
