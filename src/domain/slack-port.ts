@@ -67,6 +67,17 @@ export type RecentMessagesResult = Readonly<{
   truncated: boolean;
 }>;
 
+export type MentionMatch = Readonly<{
+  channel: ChannelId;
+  ts: SlackTs;
+  text: string | undefined;
+  threadTs: SlackTs | undefined;
+}>;
+
+export type SearchMentionsResult = Readonly<{
+  matches: ReadonlyArray<MentionMatch>;
+}>;
+
 export type AuthIdentity = Readonly<{
   botId: BotId | undefined;
   userId: UserId | undefined;
@@ -93,4 +104,7 @@ export type SlackPort = Readonly<{
   getChannelRecentMessages: (
     query: RecentMessagesQuery,
   ) => Result.Result<RecentMessagesResult, SlackApiError>;
+  searchMentions: (
+    selfUserId: UserId,
+  ) => Result.Result<SearchMentionsResult, SlackApiError>;
 }>;

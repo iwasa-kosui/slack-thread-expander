@@ -9,6 +9,7 @@ import type {
   DeleteMessageInput,
   ListBotMessagesQuery,
   ListBotMessagesResult,
+  MentionMatch,
   PostMessageInput,
   RecentMessage,
   RecentMessagesQuery,
@@ -292,6 +293,32 @@ export const SlackHttpClient = {
     const getChannelRecentMessages: SlackPort['getChannelRecentMessages'] = (query) =>
       accumulateRecent(query, [], undefined, HISTORY_MAX_PAGES);
 
+    const searchMentions: SlackPort['searchMentions'] = (selfUserId) =>
+      Result.pipe(
+        // `<@U...>` クエリで自身宛のメンションを横断検索する。
+        // sort_dir=desc で新しい順に取得し、件数は SEARCH_COUNT で打ち切る。
+        // 「On かどうか」「未登録チャンネルかどうか」のフィルタは usecase 側で行う。
+        callSlack(
+          config.userToken,
+          'search.messages',
+          {
+            query: `<@${selfUserId}>`,
+            sort: 'timestamp',
+            sort_dir: 'desc',
+            count: SEARCH_COUNT,
+          },
+          SearchMessagesResponseSchema,
+        ),
+        Result.map((res) => ({
+          matches: (res.messages?.matches ?? []).map((m): MentionMatch => ({
+            channel: m.channel.id,
+            ts: m.ts,
+            text: m.text,
+            threadTs: m.thread_ts,
+          })),
+        })),
+      );
+
     const authTest: SlackPort['authTest'] = () =>
       Result.pipe(
         callSlack(config.botToken, 'auth.test', {}, AuthTestResponseSchema),
@@ -314,6 +341,7 @@ export const SlackHttpClient = {
       deleteMessage,
       authTest,
       getChannelRecentMessages,
+      searchMentions,
     };
   },
 } as const;

@@ -12,13 +12,11 @@ User Token で `search.messages` を呼び、レスポンス中の `permalink` �
 
 ## デプロイ手順
 
-通常運用は **main ブランチへの push をトリガーに GitHub Actions が `clasp push` を実行する** 構成。
-初回のみ手動で clasp 認証と Apps Script プロジェクト作成が必要。
+デプロイはローカルから `pnpm deploy` を叩く。CI からの自動デプロイは行っていない。
 
-### 0. 初回セットアップ (CI deploy の前提)
+### 1. clasp 認証と Apps Script プロジェクト作成 (初回のみ)
 
 ```bash
-cd apps/slack-thread-expander
 pnpm install
 pnpm exec clasp login --no-localhost   # 認証後 ~/.clasprc.json が生成される
 pnpm exec clasp create \
@@ -27,22 +25,9 @@ pnpm exec clasp create \
   --rootDir ./dist                     # .clasp.json が生成される
 ```
 
-生成された `~/.clasprc.json` と `apps/slack-thread-expander/.clasp.json` の中身を、
-リポジトリの GitHub Secrets に登録する:
+`.clasp.json` はリポジトリ直下に作られる (`.clasp.json.example` を参照)。
 
-| Secret 名                            | 内容                                                              |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `SLACK_THREAD_EXPANDER_CLASPRC_JSON` | `~/.clasprc.json` の全文                                          |
-| `SLACK_THREAD_EXPANDER_CLASP_JSON`   | `apps/slack-thread-expander/.clasp.json` の全文 (scriptId を含む) |
-
-`gh` CLI で登録する場合:
-
-```bash
-gh secret set SLACK_THREAD_EXPANDER_CLASPRC_JSON < ~/.clasprc.json
-gh secret set SLACK_THREAD_EXPANDER_CLASP_JSON < apps/slack-thread-expander/.clasp.json
-```
-
-### 1. Slack App をセットアップ
+### 2. Slack App をセットアップ
 
 1. <https://api.slack.com/apps> で **Create New App > From an app manifest** を選ぶ
 2. ワークスペースを選択し、`app_manifest.yml` の内容を貼り付けて作成
@@ -52,31 +37,25 @@ gh secret set SLACK_THREAD_EXPANDER_CLASP_JSON < apps/slack-thread-expander/.cla
 4. 対象チャンネルそれぞれに Bot を invite する: `/invite @thread-expander`
 5. User Token の所有ユーザーも対象チャンネル全てに参加していること（参加していないチャンネルは検索結果に出ない）
 
-### 2. デプロイ
-
-**通常運用**: `main` ブランチに `apps/slack-thread-expander/**` の変更を含む push があると、
-`.github/workflows/deploy-slack-thread-expander.yml` が tsc → test → build → `clasp push` を実行する。
-手動キックは GitHub Actions の **Run workflow** から行う。
-
-**手動デプロイ (ローカル)**:
+### 3. デプロイ
 
 ```bash
 pnpm deploy   # = pnpm build && pnpm clasp:push
 ```
 
-### 3. Script Properties を設定
+### 4. Script Properties を設定
 
 GAS Editor の **プロジェクト設定 > スクリプト プロパティ** から登録:
 
-| キー               | 値                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `SLACK_BOT_TOKEN`  | Bot User OAuth Token (`xoxb-...`) — `chat.postMessage` の投稿用                                                                 |
-| `SLACK_USER_TOKEN` | User OAuth Token (`xoxp-...`) — `search.messages` / `conversations.info` / `conversations.history` 用                           |
-| `TARGET_CHANNELS`  | 監視対象のチャンネル ID をカンマ区切り (例: `C0123ABC,C0456DEF`)                                                                |
-| `SELF_BOT_ID`      | Bot 自身が投稿した permalink を二重展開しないためのガード。GAS Editor で `whoami` を実行してログから取得する。on/off 機能で必須 |
-| `SELF_USER_ID`     | on/off メンションを認識するための Bot User ID (`U...`)。GAS Editor で `whoami` を実行してログから取得する                       |
+| キー               | 値                                                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`  | Bot User OAuth Token (`xoxb-...`) — `chat.postMessage` の投稿用                                                                               |
+| `SLACK_USER_TOKEN` | User OAuth Token (`xoxp-...`) — `search.messages` / `conversations.info` / `conversations.history` 用                                         |
+| `TARGET_CHANNELS`  | 監視対象のチャンネル ID をカンマ区切り (例: `C0123ABC,C0456DEF`)。空のまま起動して、新規チャンネルで `@thread-expander on` させて増やしても可 |
+| `SELF_BOT_ID`      | Bot 自身が投稿した permalink を二重展開しないためのガード。**未設定なら起動時に `auth.test` で自己取得して保存する**                          |
+| `SELF_USER_ID`     | on/off メンションと未登録チャンネル自動追加で必要な Bot User ID (`U...`)。GAS Editor で `whoami` を実行してログから取得する                   |
 
-### 4. トリガーを登録
+### 5. トリガーを登録
 
 GAS Editor で関数 `installTrigger` を 1 度だけ手動実行すると、
 `main` を 1 分毎に呼ぶ時間トリガーがセットされる。
@@ -106,16 +85,39 @@ GAS Editor から `main` を手動実行し、実行ログでチャンネルご�
 
 ### 前提
 
-- `SELF_USER_ID` と `SELF_BOT_ID` の両方を Script Properties に設定すること
-  - `SELF_USER_ID` はメンションテキスト `<@U...>` のマッチングに必要
-  - `SELF_BOT_ID` がないと、Bot がスレッド返信した結果通知自体が「スレッド返信」として再帰的に展開される
+- `SELF_USER_ID` を Script Properties に設定すること（メンションテキスト `<@U...>` のマッチングに必要）
+- `SELF_BOT_ID` は未設定でも起動時に `auth.test` で自動取得・保存される（手動で `whoami` を叩く必要はない）
 - 既に運用中で本機能を導入する場合、移行期間中は各チャンネルで一度 `@thread-expander on` を投げる必要がある
+
+## 新規チャンネルでの自動追加
+
+`TARGET_CHANNELS` にまだ登録されていないチャンネルで `@thread-expander on` を受信したとき、
+そのチャンネルを `TARGET_CHANNELS` に **自動追加して有効化** する。これにより、新規チャンネルで運用を始める際に
+Script Properties を手で書き換える必要がなくなる。
+
+### 動作仕様
+
+- 1 分毎の tick で `search.messages` を `<@SELF_USER_ID>` クエリで叩き、自身宛のメンションを横断検索する
+- 検出結果のうち以下を満たすメッセージを自動追加の対象とする
+  - チャンネル本流（スレッド内のメンションは無視）
+  - `TARGET_CHANNELS` にまだ含まれていないチャンネル
+  - `ControlCommand.parse` で `On` と判定されるテキスト (`on` / `オン`)
+- 対象を見つけたら、`TARGET_CHANNELS` への追記・`setEnabled(true)`・コントロールカーソルの前進・スレッド返信を行う
+- `off` / Unknown メンションは未登録チャンネルでは無視する（明示的に `on` するまで参加しない）
+- `search.messages` 失敗時は警告ログを残して既存チャンネルの処理を続行する
+
+### 前提
+
+- `SELF_USER_ID` が必須（未設定なら自動追加は無効）
+- 検出対象になるためには User Token の所有ユーザーが当該チャンネルに参加していること（`search.messages` は User Token のスコープ内のみ返す）
+- Bot 自身を当該チャンネルに招待しておくこと（招待されていないと自動追加直後のスレッド返信は失敗するが、追加自体は記録され、招待後の tick から自然に動き出す）
 
 ## Bot 自身の ID を確認する
 
-`SELF_BOT_ID` に何を入れるべきかを GAS から確認できる `whoami` 関数を提供する。
+通常運用では `SELF_BOT_ID` は起動時に自動取得されるため設定不要。
+手動で値を確認したい場合は `whoami` 関数を提供する。
 GAS Editor で `whoami` を 1 度実行すると、Bot Token に対する `auth.test` の結果が
-実行ログに `SELF_BOT_ID: B0xxxxxxx` の形で出る。この値を Script Properties の `SELF_BOT_ID` に設定する。
+実行ログに `SELF_BOT_ID: B0xxxxxxx` の形で出る。
 
 ## 過去投稿の一括削除
 
@@ -124,7 +126,7 @@ Bot がこれまで `TARGET_CHANNELS` に投稿したメッセージを一括削
 
 ### 前提
 
-- `SELF_BOT_ID` が設定されていること（Bot 自身の投稿を識別するために必須）。未設定なら何もせず警告ログだけを残す
+- `SELF_BOT_ID` が必要（未設定なら起動時の `auth.test` 自動取得で解決される。それでも取得失敗した場合は何もせず警告ログだけを残す）
 - Bot が対象チャンネルにまだ参加していること（チャンネルから外れていると履歴を取得できない）
 - 必要スコープは既存の `chat:write`（自分の投稿の削除は同スコープで可能）
 
@@ -141,20 +143,20 @@ GAS Editor で関数 `cleanupPosts` を手動実行する。時間トリガー�
 
 ## 元実装との差分
 
-| 観点           | 元実装 (Rust)                     | 本実装 (GAS)                               |
-| -------------- | --------------------------------- | ------------------------------------------ |
-| 通信方式       | Socket Mode (WebSocket)           | 時間トリガー + `search.messages`           |
-| 遅延           | 即時                              | 最大 1 分 + 検索インデックス反映遅延       |
-| 必要トークン   | App-Level Token + Bot OAuth Token | Bot OAuth Token + User OAuth Token         |
-| 対象チャンネル | Bot が参加した全チャンネル        | `TARGET_CHANNELS` に明示 (User も参加必須) |
-| 状態管理       | なし (イベント駆動)               | チャンネル別 `LAST_TS_<channel>`           |
-| デプロイ       | バイナリ常駐                      | clasp push + 時間トリガー                  |
+| 観点           | 元実装 (Rust)                     | 本実装 (GAS)                                                       |
+| -------------- | --------------------------------- | ------------------------------------------------------------------ |
+| 通信方式       | Socket Mode (WebSocket)           | 時間トリガー + `search.messages`                                   |
+| 遅延           | 即時                              | 最大 1 分 + 検索インデックス反映遅延                               |
+| 必要トークン   | App-Level Token + Bot OAuth Token | Bot OAuth Token + User OAuth Token                                 |
+| 対象チャンネル | Bot が参加した全チャンネル        | `TARGET_CHANNELS` に明示 (User も参加必須)。`@bot on` で自動追加可 |
+| 状態管理       | なし (イベント駆動)               | チャンネル別 `LAST_TS_<channel>`                                   |
+| デプロイ       | バイナリ常駐                      | ローカルから `pnpm deploy` (`clasp push`)                          |
 
 ## 開発コマンド
 
 ```bash
 pnpm tsc        # 型チェック
-pnpm test       # vitest (findThreadedReply の等価性検証)
+pnpm test       # vitest
 pnpm lint:fix   # eslint
 pnpm format     # dprint
 pnpm build      # esbuild で dist/Code.js を生成
