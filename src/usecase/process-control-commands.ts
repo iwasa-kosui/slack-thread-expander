@@ -29,7 +29,13 @@ export type ChannelControlOutcome = Readonly<{
 
 const REPLY_ON = 'スレッド展開を ON にしました。今後の新規スレッド返信を対象に展開します。';
 const REPLY_OFF = 'スレッド展開を OFF にしました。再度 ON にすると、その時点より新しい投稿だけが対象になります。';
-const REPLY_UNKNOWN = 'コマンドを認識できませんでした (on / オン / off / オフ)。';
+const REPLY_UNKNOWN = 'コマンドを認識できませんでした (on / オン / off / オフ / help / ヘルプ)。';
+export const REPLY_HELP = [
+  '利用可能なコマンド:',
+  '• `@thread-expander on` または `オン` — このチャンネルでスレッド展開を有効化',
+  '• `@thread-expander off` または `オフ` — このチャンネルでスレッド展開を無効化',
+  '• `@thread-expander help` または `ヘルプ` — このヘルプを表示',
+].join('\n');
 
 // スレッド本流（thread_ts なし）かつ subtype がないユーザー発言だけを対象にする。
 // Bot 自身の返信や thread_broadcast を制御コマンドとして拾わないためのフィルタ。
@@ -77,6 +83,16 @@ const applyOff = (
   state.enabled = false;
   deps.logger.info(`${label} control OFF applied ts=${ts}; LAST_TS cleared`);
   sendReply(deps, label, channel, ts, REPLY_OFF);
+};
+
+const applyHelp = (
+  deps: ProcessControlCommandsDeps,
+  label: string,
+  channel: ChannelId,
+  ts: SlackTs,
+): void => {
+  deps.logger.info(`${label} control Help replied ts=${ts}`);
+  sendReply(deps, label, channel, ts, REPLY_HELP);
 };
 
 const applyUnknown = (
@@ -140,6 +156,10 @@ const processChannel = (
       case 'Off':
         applyOff(deps, label, channel, message.ts, state);
         applied.push({ ts: message.ts, kind: 'Off' });
+        break;
+      case 'Help':
+        applyHelp(deps, label, channel, message.ts);
+        applied.push({ ts: message.ts, kind: 'Help' });
         break;
       case 'Unknown':
         applyUnknown(deps, label, channel, message.ts, command.rest);

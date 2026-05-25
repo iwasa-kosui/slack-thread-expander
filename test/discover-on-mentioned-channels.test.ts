@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelControlPort } from '../src/domain/channel-control-port.ts';
 import { ChannelId } from '../src/domain/channel-id.ts';
 import type { ChannelRegistryPort } from '../src/domain/channel-registry-port.ts';
+import type { ClockPort } from '../src/domain/clock-port.ts';
+import type { DiscoveryCursorPort } from '../src/domain/discovery-cursor-port.ts';
 import type { LoggerPort } from '../src/domain/logger-port.ts';
 import type { MentionMatch, SlackPort } from '../src/domain/slack-port.ts';
 import { SlackTs } from '../src/domain/slack-ts.ts';
@@ -16,6 +18,8 @@ const channelB = ChannelId.schema.parse('C_NEW_B');
 const channelKnown = ChannelId.schema.parse('C_KNOWN');
 
 const ts = (s: string) => SlackTs.schema.parse(s);
+const initialCursor = ts('1699999000.000000');
+const fixedNow = ts('1900000000.000000');
 
 const buildMatch = (overrides: Partial<MentionMatch>): MentionMatch => ({
   channel: channelA,
@@ -29,12 +33,16 @@ type Mocks = Readonly<{
   slack: SlackPort;
   channelRegistry: ChannelRegistryPort;
   channelControl: ChannelControlPort;
+  discoveryCursor: DiscoveryCursorPort;
+  clock: ClockPort;
   logger: LoggerPort;
   registryAdd: ReturnType<typeof vi.fn>;
   setEnabled: ReturnType<typeof vi.fn>;
   setControlCursor: ReturnType<typeof vi.fn>;
   postMessage: ReturnType<typeof vi.fn>;
   searchMentions: ReturnType<typeof vi.fn>;
+  discoveryCursorGet: ReturnType<typeof vi.fn>;
+  discoveryCursorSet: ReturnType<typeof vi.fn>;
 }>;
 
 const buildMocks = (
@@ -43,6 +51,7 @@ const buildMocks = (
     matches?: ReadonlyArray<MentionMatch>;
     searchFail?: boolean;
     postFail?: boolean;
+    cursor?: SlackTs | undefined;
   } = {},
 ): Mocks => {
   const knownChannels: ChannelId[] = [...(options.known ?? [])];
@@ -90,27 +99,44 @@ const buildMocks = (
     getChannelRecentMessages: () => Result.succeed({ messages: [], truncated: false }),
     searchMentions,
   };
+  const cursorValue: SlackTs | undefined = 'cursor' in options ? options.cursor : initialCursor;
+  const discoveryCursorGet = vi.fn(() => cursorValue);
+  const discoveryCursorSet = vi.fn();
+  const discoveryCursor: DiscoveryCursorPort = {
+    get: discoveryCursorGet,
+    set: discoveryCursorSet,
+  };
+  const clock: ClockPort = {
+    nowMs: () => 0,
+    nowSlackTs: () => fixedNow,
+  };
   const logger: LoggerPort = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   return {
     slack,
     channelRegistry,
     channelControl,
+    discoveryCursor,
+    clock,
     logger,
     registryAdd,
     setEnabled,
     setControlCursor,
     postMessage,
     searchMentions,
+    discoveryCursorGet,
+    discoveryCursorSet,
   };
 };
 
-const run = (mocks: Mocks, selfUserId = userId) =>
+const run = (mocks: Mocks) =>
   discoverOnMentionedChannels({
     slack: mocks.slack,
     channelRegistry: mocks.channelRegistry,
     channelControl: mocks.channelControl,
+    discoveryCursor: mocks.discoveryCursor,
+    clock: mocks.clock,
     logger: mocks.logger,
-  })(selfUserId);
+  })(userId);
 
 describe('discoverOnMentionedChannels', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -121,6 +147,8 @@ describe('discoverOnMentionedChannels', () => {
       slack: mocks.slack,
       channelRegistry: mocks.channelRegistry,
       channelControl: mocks.channelControl,
+      discoveryCursor: mocks.discoveryCursor,
+      clock: mocks.clock,
       logger: mocks.logger,
     })(undefined);
     expect(outcome.kind).toBe('Skipped');
@@ -129,6 +157,21 @@ describe('discoverOnMentionedChannels', () => {
     }
     expect(mocks.searchMentions).not.toHaveBeenCalled();
     expect(mocks.registryAdd).not.toHaveBeenCalled();
+    expect(mocks.discoveryCursorSet).not.toHaveBeenCalled();
+  });
+
+  it('discovery cursor 未設定なら現在時刻で初期化し、search.messages は呼ばずに空の Processed を返す', () => {
+    const match = buildMatch({ ts: ts('1700000100.000000') });
+    const mocks = buildMocks({ matches: [match], cursor: undefined });
+    const outcome = run(mocks);
+    expect(outcome.kind).toBe('Processed');
+    if (outcome.kind === 'Processed') {
+      expect(outcome.discovered).toHaveLength(0);
+    }
+    expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(fixedNow);
+    expect(mocks.searchMentions).not.toHaveBeenCalled();
+    expect(mocks.registryAdd).not.toHaveBeenCalled();
+    expect(mocks.postMessage).not.toHaveBeenCalled();
   });
 
   it('search.messages 失敗時は SearchFailed を返し registry は変更しない', () => {
@@ -137,6 +180,7 @@ describe('discoverOnMentionedChannels', () => {
     expect(outcome.kind).toBe('SearchFailed');
     expect(mocks.registryAdd).not.toHaveBeenCalled();
     expect(mocks.postMessage).not.toHaveBeenCalled();
+    expect(mocks.discoveryCursorSet).not.toHaveBeenCalled();
   });
 
   it('未登録チャンネルでの @bot on を検出し registry 追加・有効化・カーソル設定・返信を行う', () => {
@@ -145,7 +189,9 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([{ channel: channelA, ts: ts('1700000100.000000') }]);
+      expect(outcome.discovered).toEqual([
+        { kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') },
+      ]);
     }
     expect(mocks.registryAdd).toHaveBeenCalledWith(channelA);
     expect(mocks.setEnabled).toHaveBeenCalledWith(channelA, true);
@@ -155,6 +201,51 @@ describe('discoverOnMentionedChannels', () => {
       text: expect.stringContaining('ON'),
       threadTs: ts('1700000100.000000'),
     });
+    expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(ts('1700000100.000000'));
+  });
+
+  it('未登録チャンネルでの @bot help は registry に追加せず案内のみスレッド返信する', () => {
+    const match = buildMatch({
+      ts: ts('1700000200.000000'),
+      text: `<@${userId}> help`,
+    });
+    const mocks = buildMocks({ matches: [match] });
+    const outcome = run(mocks);
+    expect(outcome.kind).toBe('Processed');
+    if (outcome.kind === 'Processed') {
+      expect(outcome.discovered).toEqual([
+        { kind: 'HelpReplied', channel: channelA, ts: ts('1700000200.000000') },
+      ]);
+    }
+    expect(mocks.registryAdd).not.toHaveBeenCalled();
+    expect(mocks.setEnabled).not.toHaveBeenCalled();
+    expect(mocks.setControlCursor).not.toHaveBeenCalled();
+    expect(mocks.postMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.postMessage).toHaveBeenCalledWith({
+      channel: channelA,
+      text: expect.stringContaining('利用可能なコマンド'),
+      threadTs: ts('1700000200.000000'),
+    });
+    expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(ts('1700000200.000000'));
+  });
+
+  it('discovery cursor 以前のマッチは無視する', () => {
+    const stale = buildMatch({ ts: ts('1699998000.000000') });
+    const fresh = buildMatch({
+      channel: channelB,
+      ts: ts('1700000300.000000'),
+      text: `<@${userId}> help`,
+    });
+    const mocks = buildMocks({ matches: [stale, fresh] });
+    const outcome = run(mocks);
+    expect(outcome.kind).toBe('Processed');
+    if (outcome.kind === 'Processed') {
+      expect(outcome.discovered).toEqual([
+        { kind: 'HelpReplied', channel: channelB, ts: ts('1700000300.000000') },
+      ]);
+    }
+    expect(mocks.registryAdd).not.toHaveBeenCalled();
+    expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(ts('1700000300.000000'));
   });
 
   it('既に登録済みのチャンネルは無視する', () => {
@@ -181,7 +272,7 @@ describe('discoverOnMentionedChannels', () => {
     expect(mocks.registryAdd).not.toHaveBeenCalled();
   });
 
-  it('on 以外のコマンド（off / Unknown / メンションのみ）は無視する', () => {
+  it('off / Unknown / メンションのみは無視する', () => {
     const off = buildMatch({ ts: ts('1700000100.000000'), text: `<@${userId}> off` });
     const unknown = buildMatch({
       channel: channelB,
@@ -204,16 +295,15 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([{ channel: channelA, ts: ts('1700000100.000000') }]);
+      expect(outcome.discovered).toEqual([
+        { kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') },
+      ]);
     }
     expect(mocks.registryAdd).toHaveBeenCalledTimes(1);
     expect(mocks.setControlCursor).toHaveBeenCalledWith(channelA, ts('1700000100.000000'));
     expect(mocks.postMessage).toHaveBeenCalledOnce();
-    expect(mocks.postMessage).toHaveBeenCalledWith({
-      channel: channelA,
-      text: expect.any(String),
-      threadTs: ts('1700000100.000000'),
-    });
+    // discovery cursor は dedupe で除外された newer も含めた最大値まで進める
+    expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(ts('1700000200.000000'));
   });
 
   it('複数の未登録チャンネルでの on を一括処理する', () => {
@@ -224,6 +314,7 @@ describe('discoverOnMentionedChannels', () => {
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
       expect(outcome.discovered.map((d) => d.channel)).toEqual([channelA, channelB]);
+      expect(outcome.discovered.every((d) => d.kind === 'AutoAdded')).toBe(true);
     }
     expect(mocks.registryAdd).toHaveBeenCalledTimes(2);
     expect(mocks.setEnabled).toHaveBeenCalledTimes(2);

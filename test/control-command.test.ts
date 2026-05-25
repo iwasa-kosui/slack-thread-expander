@@ -38,6 +38,18 @@ describe('ControlCommand.parse', () => {
     expect(ControlCommand.parse(`<@${userId}> オフ`, userId).kind).toBe('Off');
   });
 
+  it('「help」で Help を返す', () => {
+    expect(ControlCommand.parse(`<@${userId}> help`, userId).kind).toBe('Help');
+  });
+
+  it('「ヘルプ」で Help を返す', () => {
+    expect(ControlCommand.parse(`<@${userId}> ヘルプ`, userId).kind).toBe('Help');
+  });
+
+  it('大文字 HELP も Help として扱う', () => {
+    expect(ControlCommand.parse(`<@${userId}> HELP`, userId).kind).toBe('Help');
+  });
+
   it('メンション形式 <@U..|alias> も認識する', () => {
     expect(ControlCommand.parse(`<@${userId}|thread-expander> off`, userId).kind).toBe('Off');
   });

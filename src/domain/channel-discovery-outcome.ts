@@ -3,10 +3,9 @@ import type { ChannelId } from './channel-id.ts';
 import type { SlackApiError } from './slack-api-error.ts';
 import type { SlackTs } from './slack-ts.ts';
 
-export type DiscoveredChannel = Readonly<{
-  channel: ChannelId;
-  ts: SlackTs;
-}>;
+export type DiscoveredChannel =
+  | Readonly<{ kind: 'AutoAdded'; channel: ChannelId; ts: SlackTs }>
+  | Readonly<{ kind: 'HelpReplied'; channel: ChannelId; ts: SlackTs }>;
 
 export type ChannelDiscoveryOutcome =
   | Readonly<{ kind: 'Skipped'; reason: 'NoSelfUserId' }>
@@ -19,7 +18,19 @@ const addedCount = (outcome: ChannelDiscoveryOutcome): number => {
     case 'SearchFailed':
       return 0;
     case 'Processed':
-      return outcome.discovered.length;
+      return outcome.discovered.filter((d) => d.kind === 'AutoAdded').length;
+    default:
+      return assertNever(outcome);
+  }
+};
+
+const helpRepliedCount = (outcome: ChannelDiscoveryOutcome): number => {
+  switch (outcome.kind) {
+    case 'Skipped':
+    case 'SearchFailed':
+      return 0;
+    case 'Processed':
+      return outcome.discovered.filter((d) => d.kind === 'HelpReplied').length;
     default:
       return assertNever(outcome);
   }
@@ -27,4 +38,5 @@ const addedCount = (outcome: ChannelDiscoveryOutcome): number => {
 
 export const ChannelDiscoveryOutcome = {
   addedCount,
+  helpRepliedCount,
 } as const;
