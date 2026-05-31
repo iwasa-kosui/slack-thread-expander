@@ -67,12 +67,7 @@ export const SlackHttpClient = {
   create: (config: SlackHttpClientConfig): SlackPort => {
     const getChannelName: SlackPort['getChannelName'] = (channel) =>
       Result.pipe(
-        callSlack(
-          config.userToken,
-          'conversations.info',
-          { channel },
-          ConversationsInfoResponseSchema,
-        ),
+        callSlack(config.userToken, 'conversations.info', { channel }, ConversationsInfoResponseSchema),
         Result.map((res) => res.channel?.name),
       );
 
@@ -188,9 +183,7 @@ export const SlackHttpClient = {
         Result.map((res): BotHistoryPage => {
           const next = res.response_metadata?.next_cursor ?? '';
           const nextCursor = res.has_more === true && next !== '' ? next : undefined;
-          const matched = (res.messages ?? [])
-            .filter((m) => m.bot_id === query.botId)
-            .map((m) => m.ts);
+          const matched = (res.messages ?? []).filter((m) => m.bot_id === query.botId).map((m) => m.ts);
           return { pageTs: matched, nextCursor };
         }),
       );
@@ -310,12 +303,14 @@ export const SlackHttpClient = {
           SearchMessagesResponseSchema,
         ),
         Result.map((res) => ({
-          matches: (res.messages?.matches ?? []).map((m): MentionMatch => ({
-            channel: m.channel.id,
-            ts: m.ts,
-            text: m.text,
-            threadTs: m.thread_ts,
-          })),
+          matches: (res.messages?.matches ?? []).map(
+            (m): MentionMatch => ({
+              channel: m.channel.id,
+              ts: m.ts,
+              text: m.text,
+              threadTs: m.thread_ts,
+            }),
+          ),
         })),
       );
 

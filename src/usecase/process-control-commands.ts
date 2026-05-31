@@ -51,9 +51,7 @@ const sendReply = (
 ): void => {
   const res = deps.slack.postMessage({ channel, text, threadTs });
   if (Result.isFailure(res)) {
-    deps.logger.warn(
-      `${label} failed to reply control feedback ts=${threadTs}: ${SlackApiError.format(res.error)}`,
-    );
+    deps.logger.warn(`${label} failed to reply control feedback ts=${threadTs}: ${SlackApiError.format(res.error)}`);
   }
 };
 
@@ -85,12 +83,7 @@ const applyOff = (
   sendReply(deps, label, channel, ts, REPLY_OFF);
 };
 
-const applyHelp = (
-  deps: ProcessControlCommandsDeps,
-  label: string,
-  channel: ChannelId,
-  ts: SlackTs,
-): void => {
+const applyHelp = (deps: ProcessControlCommandsDeps, label: string, channel: ChannelId, ts: SlackTs): void => {
   deps.logger.info(`${label} control Help replied ts=${ts}`);
   sendReply(deps, label, channel, ts, REPLY_HELP);
 };
@@ -128,9 +121,7 @@ const processChannel = (
 
   const fetched = deps.slack.getChannelRecentMessages({ channel, oldest: cursor });
   if (Result.isFailure(fetched)) {
-    deps.logger.warn(
-      `${label} control: conversations.history failed: ${SlackApiError.format(fetched.error)}`,
-    );
+    deps.logger.warn(`${label} control: conversations.history failed: ${SlackApiError.format(fetched.error)}`);
     return Result.fail(fetched.error);
   }
 
@@ -183,27 +174,23 @@ const processChannel = (
   });
 };
 
-export const processControlCommands = (deps: ProcessControlCommandsDeps) =>
-(
-  channels: ReadonlyArray<ChannelId>,
-  selfUserId: UserId | undefined,
-): ReadonlyArray<ChannelControlOutcome> => {
-  if (selfUserId == null) {
-    deps.logger.warn(
-      'SELF_USER_ID is not configured. Skipping on/off mention processing.',
-    );
-    return [];
-  }
-  return channels.map((channel) => {
-    const res = processChannel(deps, channel, selfUserId);
-    if (Result.isFailure(res)) {
-      return {
-        channel,
-        enabledAfter: deps.channelControl.isEnabled(channel),
-        applied: [],
-        cursorTo: deps.channelControl.getControlCursor(channel) ?? deps.clock.nowSlackTs(),
-      };
+export const processControlCommands =
+  (deps: ProcessControlCommandsDeps) =>
+  (channels: ReadonlyArray<ChannelId>, selfUserId: UserId | undefined): ReadonlyArray<ChannelControlOutcome> => {
+    if (selfUserId == null) {
+      deps.logger.warn('SELF_USER_ID is not configured. Skipping on/off mention processing.');
+      return [];
     }
-    return res.value;
-  });
-};
+    return channels.map((channel) => {
+      const res = processChannel(deps, channel, selfUserId);
+      if (Result.isFailure(res)) {
+        return {
+          channel,
+          enabledAfter: deps.channelControl.isEnabled(channel),
+          applied: [],
+          cursorTo: deps.channelControl.getControlCursor(channel) ?? deps.clock.nowSlackTs(),
+        };
+      }
+      return res.value;
+    });
+  };

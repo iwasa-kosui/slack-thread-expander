@@ -21,37 +21,31 @@ const requireProperty = (
   key: string,
 ): Result.Result<string, ConfigError> => {
   const value = props.getProperty(key);
-  return value
-    ? Result.succeed(value)
-    : Result.fail({ kind: 'MissingProperty', key });
+  return value ? Result.succeed(value) : Result.fail({ kind: 'MissingProperty', key });
 };
 
-const parseSelfBotId = (
-  raw: string | null,
-): Result.Result<BotId | undefined, ConfigError> => {
+const parseSelfBotId = (raw: string | null): Result.Result<BotId | undefined, ConfigError> => {
   if (raw == null || raw.length === 0) return Result.succeed(undefined);
   const parsed = BotId.parse(raw);
   return parsed.success
     ? Result.succeed(parsed.data)
     : Result.fail({
-      kind: 'InvalidProperty',
-      key: KEY_SELF_BOT_ID,
-      reason: parsed.error.message,
-    });
+        kind: 'InvalidProperty',
+        key: KEY_SELF_BOT_ID,
+        reason: parsed.error.message,
+      });
 };
 
-const parseSelfUserId = (
-  raw: string | null,
-): Result.Result<UserId | undefined, ConfigError> => {
+const parseSelfUserId = (raw: string | null): Result.Result<UserId | undefined, ConfigError> => {
   if (raw == null || raw.length === 0) return Result.succeed(undefined);
   const parsed = UserId.parse(raw);
   return parsed.success
     ? Result.succeed(parsed.data)
     : Result.fail({
-      kind: 'InvalidProperty',
-      key: KEY_SELF_USER_ID,
-      reason: parsed.error.message,
-    });
+        kind: 'InvalidProperty',
+        key: KEY_SELF_USER_ID,
+        reason: parsed.error.message,
+      });
 };
 
 export const loadGasBootstrap = (): Result.Result<GasBootstrap, ConfigError> => {
@@ -62,9 +56,11 @@ export const loadGasBootstrap = (): Result.Result<GasBootstrap, ConfigError> => 
     Result.bind('userToken', () => requireProperty(props, KEY_USER_TOKEN)),
     Result.bind('selfBotId', () => parseSelfBotId(props.getProperty(KEY_SELF_BOT_ID))),
     Result.bind('selfUserId', () => parseSelfUserId(props.getProperty(KEY_SELF_USER_ID))),
-    Result.map(({ botToken, userToken, selfBotId, selfUserId }): GasBootstrap => ({
-      slackCredentials: { botToken, userToken },
-      config: { selfBotId, selfUserId },
-    })),
+    Result.map(
+      ({ botToken, userToken, selfBotId, selfUserId }): GasBootstrap => ({
+        slackCredentials: { botToken, userToken },
+        config: { selfBotId, selfUserId },
+      }),
+    ),
   );
 };

@@ -89,22 +89,12 @@ export type AuthIdentity = Readonly<{
 
 export type SlackPort = Readonly<{
   getChannelName: (channel: ChannelId) => Result.Result<string | undefined, SlackApiError>;
-  searchMessages: (
-    query: SearchMessagesQuery,
-  ) => Result.Result<SearchMessagesResult, SlackApiError>;
-  getChannelTopLevelTs: (
-    query: ChannelTopLevelTsQuery,
-  ) => Result.Result<ChannelTopLevelTsResult, SlackApiError>;
+  searchMessages: (query: SearchMessagesQuery) => Result.Result<SearchMessagesResult, SlackApiError>;
+  getChannelTopLevelTs: (query: ChannelTopLevelTsQuery) => Result.Result<ChannelTopLevelTsResult, SlackApiError>;
   postMessage: (input: PostMessageInput) => Result.Result<void, SlackApiError>;
-  listChannelBotMessages: (
-    query: ListBotMessagesQuery,
-  ) => Result.Result<ListBotMessagesResult, SlackApiError>;
+  listChannelBotMessages: (query: ListBotMessagesQuery) => Result.Result<ListBotMessagesResult, SlackApiError>;
   deleteMessage: (input: DeleteMessageInput) => Result.Result<void, SlackApiError>;
   authTest: () => Result.Result<AuthIdentity, SlackApiError>;
-  getChannelRecentMessages: (
-    query: RecentMessagesQuery,
-  ) => Result.Result<RecentMessagesResult, SlackApiError>;
-  searchMentions: (
-    selfUserId: UserId,
-  ) => Result.Result<SearchMentionsResult, SlackApiError>;
+  getChannelRecentMessages: (query: RecentMessagesQuery) => Result.Result<RecentMessagesResult, SlackApiError>;
+  searchMentions: (selfUserId: UserId) => Result.Result<SearchMentionsResult, SlackApiError>;
 }>;

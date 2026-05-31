@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -26,18 +27,14 @@ const EventSchema = z.object({
   text: z.string().optional(),
 });
 
-const dummyPermalink = Permalink.schema.parse(
-  'https://example.slack.com/archives/C0/p1',
-);
+const dummyPermalink = Permalink.schema.parse('https://example.slack.com/archives/C0/p1');
 
 const emptyContext: ClassifyContext = {
   selfBotId: undefined,
   topLevelTs: new Set(),
 };
 
-const contextWithTopLevel = (
-  ...ts: ReadonlyArray<SlackTs>
-): ClassifyContext => ({
+const contextWithTopLevel = (...ts: ReadonlyArray<SlackTs>): ClassifyContext => ({
   selfBotId: undefined,
   topLevelTs: new Set(ts),
 });
@@ -61,9 +58,7 @@ const loadMessage = (filename: string): SlackMessage => {
 describe('MessageClassification.classify', () => {
   it('plain message (no thread_ts) は NotThreaded', () => {
     const message = loadMessage('plain_message.json');
-    expect(MessageClassification.classify(message, emptyContext).kind).toBe(
-      'NotThreaded',
-    );
+    expect(MessageClassification.classify(message, emptyContext).kind).toBe('NotThreaded');
   });
 
   it('threaded message は ThreadedReply', () => {
@@ -80,9 +75,7 @@ describe('MessageClassification.classify', () => {
   // 元実装の find_threaded_message も null を返していたためスキップ結果は同等。
   it('edited threaded message (subtype=message_changed) は NotThreaded', () => {
     const message = loadMessage('threaded_message_changed.json');
-    expect(MessageClassification.classify(message, emptyContext).kind).toBe(
-      'NotThreaded',
-    );
+    expect(MessageClassification.classify(message, emptyContext).kind).toBe('NotThreaded');
   });
 
   it('broadcasted threaded message (subtype=thread_broadcast) は IgnoredSubtype', () => {
@@ -94,9 +87,7 @@ describe('MessageClassification.classify', () => {
 
   it('edited broadcasted threaded message は NotThreaded', () => {
     const message = loadMessage('broadcasted_threaded_message_changed.json');
-    expect(MessageClassification.classify(message, emptyContext).kind).toBe(
-      'NotThreaded',
-    );
+    expect(MessageClassification.classify(message, emptyContext).kind).toBe('NotThreaded');
   });
 
   it('threaded file upload (subtype=file_share) は ThreadedReply', () => {
@@ -108,9 +99,7 @@ describe('MessageClassification.classify', () => {
 
   it('broadcasted threaded file upload は IgnoredSubtype', () => {
     const message = loadMessage('broadcasted_threaded_file_upload.json');
-    expect(MessageClassification.classify(message, emptyContext).kind).toBe(
-      'IgnoredSubtype',
-    );
+    expect(MessageClassification.classify(message, emptyContext).kind).toBe('IgnoredSubtype');
   });
 
   it('selfBotId が一致する bot_id を持つメッセージは OwnPost', () => {
@@ -138,9 +127,7 @@ describe('MessageClassification.classify', () => {
       permalink: dummyPermalink,
       text: undefined,
     };
-    expect(MessageClassification.classify(message, emptyContext).kind).toBe(
-      'ThreadRoot',
-    );
+    expect(MessageClassification.classify(message, emptyContext).kind).toBe('ThreadRoot');
   });
 
   // search.messages がブロードキャスト投稿の subtype を返さないケース。
@@ -159,9 +146,7 @@ describe('MessageClassification.classify', () => {
       permalink: dummyPermalink,
       text: undefined,
     };
-    expect(
-      MessageClassification.classify(message, contextWithTopLevel(ts)).kind,
-    ).toBe('ThreadBroadcast');
+    expect(MessageClassification.classify(message, contextWithTopLevel(ts)).kind).toBe('ThreadBroadcast');
   });
 
   it('top-level に存在しなければ通常の ThreadedReply', () => {
@@ -179,8 +164,6 @@ describe('MessageClassification.classify', () => {
       permalink: dummyPermalink,
       text: undefined,
     };
-    expect(
-      MessageClassification.classify(message, contextWithTopLevel(otherTs)).kind,
-    ).toBe('ThreadedReply');
+    expect(MessageClassification.classify(message, contextWithTopLevel(otherTs)).kind).toBe('ThreadedReply');
   });
 });

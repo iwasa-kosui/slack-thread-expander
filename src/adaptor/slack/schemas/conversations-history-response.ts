@@ -14,20 +14,14 @@ export const ConversationsHistoryMessageSchema = z.object({
   thread_ts: SlackTs.schema.optional(),
 });
 
-export type ConversationsHistoryMessage = z.infer<
-  typeof ConversationsHistoryMessageSchema
->;
+export type ConversationsHistoryMessage = z.infer<typeof ConversationsHistoryMessageSchema>;
 
 export const ConversationsHistoryResponseSchema = z.object({
   ok: z.boolean(),
   error: z.string().optional(),
   messages: z.array(ConversationsHistoryMessageSchema).optional(),
   has_more: z.boolean().optional(),
-  response_metadata: z
-    .object({ next_cursor: z.string().optional() })
-    .optional(),
+  response_metadata: z.object({ next_cursor: z.string().optional() }).optional(),
 });
 
-export type ConversationsHistoryResponse = z.infer<
-  typeof ConversationsHistoryResponseSchema
->;
+export type ConversationsHistoryResponse = z.infer<typeof ConversationsHistoryResponseSchema>;

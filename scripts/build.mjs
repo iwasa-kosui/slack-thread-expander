@@ -1,5 +1,6 @@
-import { build } from 'esbuild';
 import { copyFile, mkdir } from 'node:fs/promises';
+
+import { build } from 'esbuild';
 
 const exportedNames = ['main', 'installTrigger', 'uninstallTrigger', 'cleanupPosts', 'whoami'];
 
@@ -16,9 +17,7 @@ await build({
   minify: true,
   logLevel: 'info',
   footer: {
-    js: exportedNames
-      .map((name) => `function ${name}() { return App.${name}.apply(this, arguments); }`)
-      .join('\n'),
+    js: exportedNames.map((name) => `function ${name}() { return App.${name}.apply(this, arguments); }`).join('\n'),
   },
 });
 

@@ -35,12 +35,7 @@ export type ExpandChannelDeps = Readonly<{
 }>;
 
 // 早期 return される outcome は ROP の Failure 軌道に流して短絡させる。
-type EarlyOutcome =
-  | InitializedTick
-  | ChannelInfoFailed
-  | ChannelNameMissing
-  | SearchFailed
-  | HistoryFailed;
+type EarlyOutcome = InitializedTick | ChannelInfoFailed | ChannelNameMissing | SearchFailed | HistoryFailed;
 
 type LoopState = Readonly<{
   cursorTo: SlackTs;
@@ -61,10 +56,7 @@ const filterAndSort = (
     .slice()
     .sort((a, b) => SlackTs.compareAsc(a.ts, b.ts));
 
-const loadCursor = (
-  deps: ExpandChannelDeps,
-  channel: ChannelId,
-): Result.Result<SlackTs, EarlyOutcome> => {
+const loadCursor = (deps: ExpandChannelDeps, channel: ChannelId): Result.Result<SlackTs, EarlyOutcome> => {
   const lastTs = deps.cursor.get(channel);
   if (lastTs != null) {
     deps.logger.info(`[${channel}] tick start: lastTs=${lastTs}`);
@@ -72,22 +64,15 @@ const loadCursor = (
   }
   const initial = deps.clock.nowSlackTs();
   deps.cursor.set(channel, initial);
-  deps.logger.info(
-    `[${channel}] initial run; set last_ts=${initial} and skip this tick`,
-  );
+  deps.logger.info(`[${channel}] initial run; set last_ts=${initial} and skip this tick`);
   return Result.fail({ kind: 'Initialized', channel, initialTs: initial });
 };
 
-const resolveChannelName = (
-  deps: ExpandChannelDeps,
-  channel: ChannelId,
-): Result.Result<string, EarlyOutcome> =>
+const resolveChannelName = (deps: ExpandChannelDeps, channel: ChannelId): Result.Result<string, EarlyOutcome> =>
   Result.pipe(
     deps.slack.getChannelName(channel),
     Result.mapError((error): EarlyOutcome => {
-      deps.logger.warn(
-        `[${channel}] conversations.info failed: ${SlackApiError.format(error)}`,
-      );
+      deps.logger.warn(`[${channel}] conversations.info failed: ${SlackApiError.format(error)}`);
       return { kind: 'ChannelInfoFailed', channel, error };
     }),
     Result.andThen((name): Result.Result<string, EarlyOutcome> => {
@@ -111,9 +96,7 @@ const runSearch = (
   return Result.pipe(
     deps.slack.searchMessages({ channelName, afterDate }),
     Result.mapError((error): EarlyOutcome => {
-      deps.logger.warn(
-        `${label} search.messages failed: ${SlackApiError.format(error)}`,
-      );
+      deps.logger.warn(`${label} search.messages failed: ${SlackApiError.format(error)}`);
       return { kind: 'SearchFailed', channel, channelName, error };
     }),
   );
@@ -131,9 +114,7 @@ const loadTopLevelTs = (
   return Result.pipe(
     deps.slack.getChannelTopLevelTs({ channel, oldest: lastTs }),
     Result.mapError((error): EarlyOutcome => {
-      deps.logger.warn(
-        `${label} conversations.history failed: ${SlackApiError.format(error)}`,
-      );
+      deps.logger.warn(`${label} conversations.history failed: ${SlackApiError.format(error)}`);
       return { kind: 'HistoryFailed', channel, channelName, error };
     }),
   );
@@ -144,64 +125,54 @@ const advanceCursor = (state: LoopState, ts: SlackTs): LoopState => ({
   cursorTo: SlackTs.max(state.cursorTo, ts),
 });
 
-const stepMessage = (
-  deps: ExpandChannelDeps,
-  label: string,
-  selfBotId: BotId | undefined,
-  topLevelTs: ReadonlySet<SlackTs>,
-) =>
-(state: LoopState, message: SlackMessage): Result.Result<LoopState, LoopState> => {
-  const classification = MessageClassification.classify(message, {
-    selfBotId,
-    topLevelTs,
-  });
-  switch (classification.kind) {
-    case 'OwnPost':
-      deps.logger.info(`${label} skip ts=${message.ts} reason=own-post`);
-      return Result.succeed(advanceCursor({ ...state, skippedOwn: state.skippedOwn + 1 }, message.ts));
-    case 'NotThreaded':
-    case 'ThreadRoot':
-    case 'IgnoredSubtype':
-      deps.logger.info(
-        `${label} skip ts=${message.ts} reason=${classification.kind} thread_ts=${message.threadTs ?? 'none'} subtype=${
-          message.subtype ?? 'none'
-        }`,
-      );
-      return Result.succeed(
-        advanceCursor({ ...state, skippedNoReply: state.skippedNoReply + 1 }, message.ts),
-      );
-    case 'ThreadBroadcast':
-      deps.logger.info(
-        `${label} skip ts=${message.ts} reason=ThreadBroadcast thread_ts=${message.threadTs ?? 'none'} subtype=${
-          message.subtype ?? 'none'
-        }`,
-      );
-      return Result.succeed(
-        advanceCursor({ ...state, skippedBroadcast: state.skippedBroadcast + 1 }, message.ts),
-      );
-    case 'ThreadedReply':
-      return Result.pipe(
-        deps.slack.postMessage({
-          channel: classification.channel,
-          text: `<${classification.permalink}|リンク>`,
-        }),
-        Result.map((): LoopState => {
-          deps.logger.info(`${label} expanded ts=${message.ts} -> ${classification.permalink}`);
-          return advanceCursor({ ...state, expanded: state.expanded + 1 }, message.ts);
-        }),
-        // post 失敗時は Failure 軌道に「停止状態」を載せる。
-        // 後続メッセージへの fold が短絡し、cursor を進めずに打ち切られる。
-        Result.mapError((error): LoopState => {
-          deps.logger.warn(
-            `${label} failed to expand ts=${classification.ts}: ${SlackApiError.format(error)}`,
-          );
-          return { ...state, errors: [...state.errors, error] };
-        }),
-      );
-    default:
-      return assertNever(classification);
-  }
-};
+const stepMessage =
+  (deps: ExpandChannelDeps, label: string, selfBotId: BotId | undefined, topLevelTs: ReadonlySet<SlackTs>) =>
+  (state: LoopState, message: SlackMessage): Result.Result<LoopState, LoopState> => {
+    const classification = MessageClassification.classify(message, {
+      selfBotId,
+      topLevelTs,
+    });
+    switch (classification.kind) {
+      case 'OwnPost':
+        deps.logger.info(`${label} skip ts=${message.ts} reason=own-post`);
+        return Result.succeed(advanceCursor({ ...state, skippedOwn: state.skippedOwn + 1 }, message.ts));
+      case 'NotThreaded':
+      case 'ThreadRoot':
+      case 'IgnoredSubtype':
+        deps.logger.info(
+          `${label} skip ts=${message.ts} reason=${classification.kind} thread_ts=${message.threadTs ?? 'none'} subtype=${
+            message.subtype ?? 'none'
+          }`,
+        );
+        return Result.succeed(advanceCursor({ ...state, skippedNoReply: state.skippedNoReply + 1 }, message.ts));
+      case 'ThreadBroadcast':
+        deps.logger.info(
+          `${label} skip ts=${message.ts} reason=ThreadBroadcast thread_ts=${message.threadTs ?? 'none'} subtype=${
+            message.subtype ?? 'none'
+          }`,
+        );
+        return Result.succeed(advanceCursor({ ...state, skippedBroadcast: state.skippedBroadcast + 1 }, message.ts));
+      case 'ThreadedReply':
+        return Result.pipe(
+          deps.slack.postMessage({
+            channel: classification.channel,
+            text: `<${classification.permalink}|リンク>`,
+          }),
+          Result.map((): LoopState => {
+            deps.logger.info(`${label} expanded ts=${message.ts} -> ${classification.permalink}`);
+            return advanceCursor({ ...state, expanded: state.expanded + 1 }, message.ts);
+          }),
+          // post 失敗時は Failure 軌道に「停止状態」を載せる。
+          // 後続メッセージへの fold が短絡し、cursor を進めずに打ち切られる。
+          Result.mapError((error): LoopState => {
+            deps.logger.warn(`${label} failed to expand ts=${classification.ts}: ${SlackApiError.format(error)}`);
+            return { ...state, errors: [...state.errors, error] };
+          }),
+        );
+      default:
+        return assertNever(classification);
+    }
+  };
 
 const foldMessages = (
   deps: ExpandChannelDeps,
@@ -213,18 +184,17 @@ const foldMessages = (
 ): LoopState => {
   const step = stepMessage(deps, label, selfBotId, topLevelTs);
   const folded = messages.reduce<Result.Result<LoopState, LoopState>>(
-    (acc, message) => Result.pipe(acc, Result.andThen((state) => step(state, message))),
+    (acc, message) =>
+      Result.pipe(
+        acc,
+        Result.andThen((state) => step(state, message)),
+      ),
     Result.succeed(initial),
   );
   return Result.isSuccess(folded) ? folded.value : folded.error;
 };
 
-const persistCursor = (
-  deps: ExpandChannelDeps,
-  channel: ChannelId,
-  from: SlackTs,
-  to: SlackTs,
-): void => {
+const persistCursor = (deps: ExpandChannelDeps, channel: ChannelId, from: SlackTs, to: SlackTs): void => {
   if (to !== from) deps.cursor.set(channel, to);
 };
 
@@ -281,24 +251,23 @@ const processMatches = (
   };
 };
 
-export const expandChannel = (deps: ExpandChannelDeps) =>
-(
-  channel: ChannelId,
-  selfBotId: BotId | undefined,
-): ChannelTickOutcome => {
-  if (!deps.channelControl.isEnabled(channel)) {
-    deps.logger.info(`[${channel}] expand disabled; skip`);
-    return { kind: 'Disabled', channel };
-  }
-  const pipeline = Result.pipe(
-    Result.do(),
-    Result.bind('lastTs', () => loadCursor(deps, channel)),
-    Result.bind('channelName', () => resolveChannelName(deps, channel)),
-    Result.bind('search', ({ channelName, lastTs }) => runSearch(deps, channel, channelName, lastTs)),
-    Result.bind('history', ({ channelName, lastTs }) => loadTopLevelTs(deps, channel, channelName, lastTs)),
-    Result.map(({ lastTs, channelName, search, history }): ProcessedTick =>
-      processMatches(deps, channel, channelName, lastTs, selfBotId, search, history)
-    ),
-  );
-  return Result.isSuccess(pipeline) ? pipeline.value : pipeline.error;
-};
+export const expandChannel =
+  (deps: ExpandChannelDeps) =>
+  (channel: ChannelId, selfBotId: BotId | undefined): ChannelTickOutcome => {
+    if (!deps.channelControl.isEnabled(channel)) {
+      deps.logger.info(`[${channel}] expand disabled; skip`);
+      return { kind: 'Disabled', channel };
+    }
+    const pipeline = Result.pipe(
+      Result.do(),
+      Result.bind('lastTs', () => loadCursor(deps, channel)),
+      Result.bind('channelName', () => resolveChannelName(deps, channel)),
+      Result.bind('search', ({ channelName, lastTs }) => runSearch(deps, channel, channelName, lastTs)),
+      Result.bind('history', ({ channelName, lastTs }) => loadTopLevelTs(deps, channel, channelName, lastTs)),
+      Result.map(
+        ({ lastTs, channelName, search, history }): ProcessedTick =>
+          processMatches(deps, channel, channelName, lastTs, selfBotId, search, history),
+      ),
+    );
+    return Result.isSuccess(pipeline) ? pipeline.value : pipeline.error;
+  };

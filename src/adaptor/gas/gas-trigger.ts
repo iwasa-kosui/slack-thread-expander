@@ -9,9 +9,7 @@ export const GasTrigger = {
         ScriptApp.deleteTrigger(trigger);
       }
     }
-    ScriptApp.newTrigger(HANDLER_FUNCTION).timeBased().everyMinutes(
-      INTERVAL_MINUTES,
-    ).create();
+    ScriptApp.newTrigger(HANDLER_FUNCTION).timeBased().everyMinutes(INTERVAL_MINUTES).create();
   },
   uninstall: (): void => {
     for (const trigger of ScriptApp.getProjectTriggers()) {

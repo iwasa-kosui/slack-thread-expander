@@ -28,22 +28,21 @@ export type CleanupProcessed = Readonly<{
   failures: ReadonlyArray<CleanupDeleteFailure>;
 }>;
 
-export type ChannelCleanupOutcome =
-  | CleanupSkippedMissingSelfBotId
-  | CleanupListFailed
-  | CleanupProcessed;
+export type ChannelCleanupOutcome = CleanupSkippedMissingSelfBotId | CleanupListFailed | CleanupProcessed;
 
-const onlyProcessed = <T>(getter: (p: CleanupProcessed) => T, fallback: T) => (outcome: ChannelCleanupOutcome): T => {
-  switch (outcome.kind) {
-    case 'SkippedMissingSelfBotId':
-    case 'ListFailed':
-      return fallback;
-    case 'Processed':
-      return getter(outcome);
-    default:
-      return assertNever(outcome);
-  }
-};
+const onlyProcessed =
+  <T>(getter: (p: CleanupProcessed) => T, fallback: T) =>
+  (outcome: ChannelCleanupOutcome): T => {
+    switch (outcome.kind) {
+      case 'SkippedMissingSelfBotId':
+      case 'ListFailed':
+        return fallback;
+      case 'Processed':
+        return getter(outcome);
+      default:
+        return assertNever(outcome);
+    }
+  };
 
 const scannedCount = onlyProcessed((p) => p.scanned, 0);
 const deletedCount = onlyProcessed((p) => p.deleted, 0);

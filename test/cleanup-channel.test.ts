@@ -28,16 +28,18 @@ const buildMocks = (
   } = {},
 ): Mocks => {
   const targets = (options.targets ?? []).map(ts);
-  const listChannelBotMessages = vi.fn().mockReturnValue(
-    options.listError === true
-      ? Result.fail({ kind: 'slack', error: 'channel_not_found' })
-      : Result.succeed({ ts: targets, truncated: options.truncated ?? false }),
-  );
+  const listChannelBotMessages = vi
+    .fn()
+    .mockReturnValue(
+      options.listError === true
+        ? Result.fail({ kind: 'slack', error: 'channel_not_found' })
+        : Result.succeed({ ts: targets, truncated: options.truncated ?? false }),
+    );
   const deleteFailureFor = new Set(options.deleteFailureFor ?? []);
   const deleteMessage = vi.fn((input: { ts: string }) =>
     deleteFailureFor.has(input.ts)
       ? Result.fail({ kind: 'slack', error: 'cant_delete_message' })
-      : Result.succeed(undefined)
+      : Result.succeed(undefined),
   );
   const slack: SlackPort = {
     getChannelName: vi.fn(),

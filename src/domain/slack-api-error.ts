@@ -21,11 +21,7 @@ export type SlackNetworkError = Readonly<{
 
 import { assertNever } from '../util/assert-never.ts';
 
-export type SlackApiError =
-  | SlackHttpError
-  | SlackResponseError
-  | SlackParseError
-  | SlackNetworkError;
+export type SlackApiError = SlackHttpError | SlackResponseError | SlackParseError | SlackNetworkError;
 
 export const SlackApiError = {
   format: (error: SlackApiError): string => {

@@ -8,9 +8,7 @@ const CONTROL_TS_PREFIX = 'CONTROL_TS_';
 export const GasPropertiesChannelControlStore = {
   create: (): ChannelControlPort => ({
     isEnabled: (channel: ChannelId) => {
-      const raw = PropertiesService.getScriptProperties().getProperty(
-        `${ENABLED_PREFIX}${channel}`,
-      );
+      const raw = PropertiesService.getScriptProperties().getProperty(`${ENABLED_PREFIX}${channel}`);
       return raw === 'true';
     },
     setEnabled: (channel, enabled) => {
@@ -22,18 +20,13 @@ export const GasPropertiesChannelControlStore = {
       }
     },
     getControlCursor: (channel: ChannelId) => {
-      const raw = PropertiesService.getScriptProperties().getProperty(
-        `${CONTROL_TS_PREFIX}${channel}`,
-      );
+      const raw = PropertiesService.getScriptProperties().getProperty(`${CONTROL_TS_PREFIX}${channel}`);
       if (raw == null) return undefined;
       const parsed = SlackTs.parse(raw);
       return parsed.success ? parsed.data : undefined;
     },
     setControlCursor: (channel, ts) => {
-      PropertiesService.getScriptProperties().setProperty(
-        `${CONTROL_TS_PREFIX}${channel}`,
-        ts,
-      );
+      PropertiesService.getScriptProperties().setProperty(`${CONTROL_TS_PREFIX}${channel}`, ts);
     },
   }),
 } as const;

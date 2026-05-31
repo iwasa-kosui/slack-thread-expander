@@ -37,13 +37,13 @@ const formatOutcomeSummary = (outcome: ChannelTickOutcome): string => {
     case 'ChannelNameMissing':
       return `[${outcome.channel}] summary: channel name missing`;
     case 'SearchFailed':
-      return `[${outcome.channel} #${outcome.channelName}] summary: search.messages failed - ${
-        SlackApiError.format(outcome.error)
-      }`;
+      return `[${outcome.channel} #${outcome.channelName}] summary: search.messages failed - ${SlackApiError.format(
+        outcome.error,
+      )}`;
     case 'HistoryFailed':
-      return `[${outcome.channel} #${outcome.channelName}] summary: conversations.history failed - ${
-        SlackApiError.format(outcome.error)
-      }`;
+      return `[${outcome.channel} #${outcome.channelName}] summary: conversations.history failed - ${SlackApiError.format(
+        outcome.error,
+      )}`;
     case 'Processed':
       return `[${outcome.channel} #${outcome.channelName}] summary: fetched=${outcome.fetched} candidates=${outcome.candidates} expanded=${outcome.expanded} skippedOwn=${outcome.skippedOwn} skippedNoReply=${outcome.skippedNoReply} skippedBroadcast=${outcome.skippedBroadcast} errors=${outcome.errors.length}`;
     default:
@@ -58,18 +58,16 @@ const formatDiscoverySummary = (outcome: ChannelDiscoveryOutcome): string => {
     case 'SearchFailed':
       return `discovery: search.messages failed - ${SlackApiError.format(outcome.error)}`;
     case 'Processed':
-      return `discovery: added=${ChannelDiscoveryOutcome.addedCount(outcome)} helpReplied=${
-        ChannelDiscoveryOutcome.helpRepliedCount(outcome)
-      } channels=[${outcome.discovered.map((d) => `${d.kind}:${d.channel}`).join(',')}]`;
+      return `discovery: added=${ChannelDiscoveryOutcome.addedCount(outcome)} helpReplied=${ChannelDiscoveryOutcome.helpRepliedCount(
+        outcome,
+      )} channels=[${outcome.discovered.map((d) => `${d.kind}:${d.channel}`).join(',')}]`;
     default:
       return assertNever(outcome);
   }
 };
 
-const sum = (
-  outcomes: ReadonlyArray<ChannelTickOutcome>,
-  pick: (o: ChannelTickOutcome) => number,
-): number => outcomes.reduce((acc, o) => acc + pick(o), 0);
+const sum = (outcomes: ReadonlyArray<ChannelTickOutcome>, pick: (o: ChannelTickOutcome) => number): number =>
+  outcomes.reduce((acc, o) => acc + pick(o), 0);
 
 const runBody = (deps: RunTickDeps, config: Config): void => {
   const tickStartMs = deps.clock.nowMs();
@@ -90,9 +88,7 @@ const runBody = (deps: RunTickDeps, config: Config): void => {
   // 2) discover で追加された分も含めて最新の TARGET_CHANNELS を取得する。
   const targetChannels = deps.channelRegistry.list();
   if (targetChannels.length === 0) {
-    deps.logger.warn(
-      'TARGET_CHANNELS is empty. Set channel IDs (comma-separated) in Script Properties.',
-    );
+    deps.logger.warn('TARGET_CHANNELS is empty. Set channel IDs (comma-separated) in Script Properties.');
     return;
   }
   deps.logger.info(
@@ -143,9 +139,11 @@ const runBody = (deps: RunTickDeps, config: Config): void => {
   );
 };
 
-export const runTick = (deps: RunTickDeps) => (config: Config): void => {
-  const acquired = deps.lock.tryRun(() => runBody(deps, config));
-  if (!acquired) {
-    deps.logger.info('previous tick still running; skip');
-  }
-};
+export const runTick =
+  (deps: RunTickDeps) =>
+  (config: Config): void => {
+    const acquired = deps.lock.tryRun(() => runBody(deps, config));
+    if (!acquired) {
+      deps.logger.info('previous tick still running; skip');
+    }
+  };

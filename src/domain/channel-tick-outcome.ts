@@ -80,21 +80,23 @@ const errorCount = (outcome: ChannelTickOutcome): number => {
   }
 };
 
-const onlyProcessed = <T>(getter: (p: ProcessedTick) => T, fallback: T) => (outcome: ChannelTickOutcome): T => {
-  switch (outcome.kind) {
-    case 'Initialized':
-    case 'Disabled':
-    case 'ChannelInfoFailed':
-    case 'ChannelNameMissing':
-    case 'SearchFailed':
-    case 'HistoryFailed':
-      return fallback;
-    case 'Processed':
-      return getter(outcome);
-    default:
-      return assertNever(outcome);
-  }
-};
+const onlyProcessed =
+  <T>(getter: (p: ProcessedTick) => T, fallback: T) =>
+  (outcome: ChannelTickOutcome): T => {
+    switch (outcome.kind) {
+      case 'Initialized':
+      case 'Disabled':
+      case 'ChannelInfoFailed':
+      case 'ChannelNameMissing':
+      case 'SearchFailed':
+      case 'HistoryFailed':
+        return fallback;
+      case 'Processed':
+        return getter(outcome);
+      default:
+        return assertNever(outcome);
+    }
+  };
 
 const fetchedCount = onlyProcessed((p) => p.fetched, 0);
 const expandedCount = onlyProcessed((p) => p.expanded, 0);

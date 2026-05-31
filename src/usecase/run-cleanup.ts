@@ -32,29 +32,21 @@ const formatOutcomeSummary = (outcome: ChannelCleanupOutcome): string => {
   }
 };
 
-const sum = (
-  outcomes: ReadonlyArray<ChannelCleanupOutcome>,
-  pick: (o: ChannelCleanupOutcome) => number,
-): number => outcomes.reduce((acc, o) => acc + pick(o), 0);
+const sum = (outcomes: ReadonlyArray<ChannelCleanupOutcome>, pick: (o: ChannelCleanupOutcome) => number): number =>
+  outcomes.reduce((acc, o) => acc + pick(o), 0);
 
 const runBody = (deps: RunCleanupDeps, config: Config): void => {
   const startMs = deps.clock.nowMs();
   const targetChannels = deps.channelRegistry.list();
   if (targetChannels.length === 0) {
-    deps.logger.warn(
-      'TARGET_CHANNELS is empty. Set channel IDs (comma-separated) in Script Properties.',
-    );
+    deps.logger.warn('TARGET_CHANNELS is empty. Set channel IDs (comma-separated) in Script Properties.');
     return;
   }
   if (config.selfBotId == null) {
-    deps.logger.warn(
-      'SELF_BOT_ID is not configured. Cleanup requires it to identify the bot\'s own posts.',
-    );
+    deps.logger.warn("SELF_BOT_ID is not configured. Cleanup requires it to identify the bot's own posts.");
     return;
   }
-  deps.logger.info(
-    `cleanup start: channels=[${targetChannels.join(',')}] selfBotId=${config.selfBotId}`,
-  );
+  deps.logger.info(`cleanup start: channels=[${targetChannels.join(',')}] selfBotId=${config.selfBotId}`);
 
   const cleanup = cleanupChannel({ slack: deps.slack, logger: deps.logger });
 
@@ -75,9 +67,11 @@ const runBody = (deps: RunCleanupDeps, config: Config): void => {
   );
 };
 
-export const runCleanup = (deps: RunCleanupDeps) => (config: Config): void => {
-  const acquired = deps.lock.tryRun(() => runBody(deps, config));
-  if (!acquired) {
-    deps.logger.info('previous tick still running; skip cleanup');
-  }
-};
+export const runCleanup =
+  (deps: RunCleanupDeps) =>
+  (config: Config): void => {
+    const acquired = deps.lock.tryRun(() => runBody(deps, config));
+    if (!acquired) {
+      deps.logger.info('previous tick still running; skip cleanup');
+    }
+  };

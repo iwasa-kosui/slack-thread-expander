@@ -7,10 +7,7 @@ const SLACK_API_BASE = 'https://slack.com/api';
 
 type Payload = Record<string, string | number | boolean | undefined>;
 
-const buildOptions = (
-  token: string,
-  payload: Payload,
-): GoogleAppsScript.URL_Fetch.URLFetchRequestOptions => ({
+const buildOptions = (token: string, payload: Payload): GoogleAppsScript.URL_Fetch.URLFetchRequestOptions => ({
   method: 'post',
   contentType: 'application/x-www-form-urlencoded; charset=utf-8',
   headers: { Authorization: `Bearer ${token}` },
@@ -37,14 +34,10 @@ const fetchHttp = (
   }
 };
 
-const ensureHttpOk = (
-  response: GoogleAppsScript.URL_Fetch.HTTPResponse,
-): Result.Result<string, SlackApiError> => {
+const ensureHttpOk = (response: GoogleAppsScript.URL_Fetch.HTTPResponse): Result.Result<string, SlackApiError> => {
   const status = response.getResponseCode();
   const body = response.getContentText();
-  return status >= 200 && status < 300
-    ? Result.succeed(body)
-    : Result.fail({ kind: 'http', status, body });
+  return status >= 200 && status < 300 ? Result.succeed(body) : Result.fail({ kind: 'http', status, body });
 };
 
 const parseJson = (body: string): Result.Result<unknown, SlackApiError> => {
@@ -58,22 +51,21 @@ const parseJson = (body: string): Result.Result<unknown, SlackApiError> => {
   }
 };
 
-const validateSchema = <T extends { ok: boolean; error?: string }>(
-  schema: z.ZodType<T>,
-) =>
-(raw: unknown): Result.Result<T, SlackApiError> => {
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    return Result.fail({ kind: 'parse', message: parsed.error.message });
-  }
-  if (!parsed.data.ok) {
-    return Result.fail({ kind: 'slack', error: parsed.data.error ?? 'unknown' });
-  }
-  // generic T では Result.succeed の ResultFor が ResultAsync を排除しきれないため、
-  // Success リテラルを直接構築して同期 Result に確定させる。
-  const success: Result.Success<T> = { type: 'Success', value: parsed.data };
-  return success;
-};
+const validateSchema =
+  <T extends { ok: boolean; error?: string }>(schema: z.ZodType<T>) =>
+  (raw: unknown): Result.Result<T, SlackApiError> => {
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) {
+      return Result.fail({ kind: 'parse', message: parsed.error.message });
+    }
+    if (!parsed.data.ok) {
+      return Result.fail({ kind: 'slack', error: parsed.data.error ?? 'unknown' });
+    }
+    // generic T では Result.succeed の ResultFor が ResultAsync を排除しきれないため、
+    // Success リテラルを直接構築して同期 Result に確定させる。
+    const success: Result.Success<T> = { type: 'Success', value: parsed.data };
+    return success;
+  };
 
 export const callSlack = <T extends { ok: boolean; error?: string }>(
   token: string,
