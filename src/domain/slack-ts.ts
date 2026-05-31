@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const SlackTsBrand = Symbol('SlackTs');
-const SlackTsSchema = z.string().regex(/^\d+\.\d+$/).brand<typeof SlackTsBrand>();
+const SlackTsSchema = z
+  .string()
+  .regex(/^\d+\.\d+$/)
+  .brand<typeof SlackTsBrand>();
 export type SlackTs = z.infer<typeof SlackTsSchema>;
 
 // `search.messages` の `after:YYYY-MM-DD` 用に、SlackTs から指定日数前の UTC 日付文字列を作る。

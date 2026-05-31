@@ -76,10 +76,7 @@ const isCandidate = (
   return triggerKindOf(match, selfUserId) != null;
 };
 
-const applyAutoAdd = (
-  deps: DiscoverOnMentionedChannelsDeps,
-  match: MentionMatch,
-): DiscoveredChannel => {
+const applyAutoAdd = (deps: DiscoverOnMentionedChannelsDeps, match: MentionMatch): DiscoveredChannel => {
   const label = `[${match.channel}]`;
   deps.channelRegistry.add(match.channel);
   deps.channelControl.setEnabled(match.channel, true);
@@ -93,22 +90,17 @@ const applyAutoAdd = (
   });
   if (Result.isFailure(replyRes)) {
     deps.logger.warn(
-      `${label} discovery: auto-added & enabled via mention ts=${match.ts}, but failed to reply: ${
-        SlackApiError.format(replyRes.error)
-      }`,
+      `${label} discovery: auto-added & enabled via mention ts=${match.ts}, but failed to reply: ${SlackApiError.format(
+        replyRes.error,
+      )}`,
     );
   } else {
-    deps.logger.info(
-      `${label} discovery: auto-added & enabled via mention ts=${match.ts}`,
-    );
+    deps.logger.info(`${label} discovery: auto-added & enabled via mention ts=${match.ts}`);
   }
   return { kind: 'AutoAdded', channel: match.channel, ts: match.ts };
 };
 
-const applyHelpReply = (
-  deps: DiscoverOnMentionedChannelsDeps,
-  match: MentionMatch,
-): DiscoveredChannel => {
+const applyHelpReply = (deps: DiscoverOnMentionedChannelsDeps, match: MentionMatch): DiscoveredChannel => {
   const label = `[${match.channel}]`;
   const replyRes = deps.slack.postMessage({
     channel: match.channel,
@@ -117,14 +109,12 @@ const applyHelpReply = (
   });
   if (Result.isFailure(replyRes)) {
     deps.logger.warn(
-      `${label} discovery: help replied to unregistered channel ts=${match.ts}, but failed to post: ${
-        SlackApiError.format(replyRes.error)
-      }`,
+      `${label} discovery: help replied to unregistered channel ts=${match.ts}, but failed to post: ${SlackApiError.format(
+        replyRes.error,
+      )}`,
     );
   } else {
-    deps.logger.info(
-      `${label} discovery: help replied to unregistered channel ts=${match.ts}`,
-    );
+    deps.logger.info(`${label} discovery: help replied to unregistered channel ts=${match.ts}`);
   }
   return { kind: 'HelpReplied', channel: match.channel, ts: match.ts };
 };
@@ -145,11 +135,10 @@ const applyDiscovery = (
 };
 
 export const discoverOnMentionedChannels =
-  (deps: DiscoverOnMentionedChannelsDeps) => (selfUserId: UserId | undefined): ChannelDiscoveryOutcome => {
+  (deps: DiscoverOnMentionedChannelsDeps) =>
+  (selfUserId: UserId | undefined): ChannelDiscoveryOutcome => {
     if (selfUserId == null) {
-      deps.logger.warn(
-        'SELF_USER_ID is not configured. Skipping channel discovery via mentions.',
-      );
+      deps.logger.warn('SELF_USER_ID is not configured. Skipping channel discovery via mentions.');
       return { kind: 'Skipped', reason: 'NoSelfUserId' };
     }
 
@@ -164,9 +153,7 @@ export const discoverOnMentionedChannels =
 
     const searched = deps.slack.searchMentions(selfUserId);
     if (Result.isFailure(searched)) {
-      deps.logger.warn(
-        `channel discovery: search.messages failed: ${SlackApiError.format(searched.error)}`,
-      );
+      deps.logger.warn(`channel discovery: search.messages failed: ${SlackApiError.format(searched.error)}`);
       return { kind: 'SearchFailed', error: searched.error };
     }
 
@@ -185,10 +172,7 @@ export const discoverOnMentionedChannels =
     // 処理対象になった全マッチ (`candidates`) の最大 ts までカーソルを進める。
     // `targets` は dedupe で一部しか残らないため、candidates 全体から最大を取らないと
     // 「同 tick で dedupe された newer な On」が次 tick で再検出されてしまう。
-    const maxSeen = candidates.reduce<SlackTs>(
-      (acc, m) => SlackTs.max(acc, m.ts),
-      existingCursor,
-    );
+    const maxSeen = candidates.reduce<SlackTs>((acc, m) => SlackTs.max(acc, m.ts), existingCursor);
     if (maxSeen !== existingCursor) {
       deps.discoveryCursor.set(maxSeen);
     }

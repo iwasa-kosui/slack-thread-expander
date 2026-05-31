@@ -60,9 +60,7 @@
                 "ts": "1644939337.956639"
               }
             ],
-            "mrkdwn_in": [
-              "text"
-            ],
+            "mrkdwn_in": ["text"],
             "original_url": "https://eagletmt.slack.com/archives/C03387UAMQR/p1644939337956639?thread_ts=1644938961.726289&amp;cid=C03387UAMQR",
             "text": "threaded message",
             "ts": "1644939337.956639"

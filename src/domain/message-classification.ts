@@ -32,10 +32,7 @@ export type ClassifyContext = Readonly<{
   topLevelTs: ReadonlySet<SlackTs>;
 }>;
 
-const classify = (
-  message: SlackMessage,
-  context: ClassifyContext,
-): MessageClassification => {
+const classify = (message: SlackMessage, context: ClassifyContext): MessageClassification => {
   if (context.selfBotId != null && message.botId === context.selfBotId) {
     return { kind: 'OwnPost' };
   }

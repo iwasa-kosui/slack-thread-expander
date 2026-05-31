@@ -7,23 +7,16 @@ const KEY_PREFIX = 'LAST_TS_';
 export const GasPropertiesCursorStore = {
   create: (): CursorPort => ({
     get: (channel: ChannelId) => {
-      const raw = PropertiesService.getScriptProperties().getProperty(
-        `${KEY_PREFIX}${channel}`,
-      );
+      const raw = PropertiesService.getScriptProperties().getProperty(`${KEY_PREFIX}${channel}`);
       if (raw == null) return undefined;
       const parsed = SlackTs.parse(raw);
       return parsed.success ? parsed.data : undefined;
     },
     set: (channel, ts) => {
-      PropertiesService.getScriptProperties().setProperty(
-        `${KEY_PREFIX}${channel}`,
-        ts,
-      );
+      PropertiesService.getScriptProperties().setProperty(`${KEY_PREFIX}${channel}`, ts);
     },
     clear: (channel) => {
-      PropertiesService.getScriptProperties().deleteProperty(
-        `${KEY_PREFIX}${channel}`,
-      );
+      PropertiesService.getScriptProperties().deleteProperty(`${KEY_PREFIX}${channel}`);
     },
   }),
 } as const;

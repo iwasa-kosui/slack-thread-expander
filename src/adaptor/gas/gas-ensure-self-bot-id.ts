@@ -10,18 +10,12 @@ const KEY_SELF_BOT_ID = 'SELF_BOT_ID';
 // Script Properties に SELF_BOT_ID が未設定の場合、auth.test で自己取得して保存する。
 // 取得失敗・bot_id 不在のときは WARN を残して config をそのまま返す（致命的ではない）。
 // 解決済の selfBotId は expand の skippedOwn 判定や cleanup の対象判定に使われる。
-export const ensureSelfBotId = (
-  slack: SlackPort,
-  config: Config,
-  logger: LoggerPort,
-): Config => {
+export const ensureSelfBotId = (slack: SlackPort, config: Config, logger: LoggerPort): Config => {
   if (config.selfBotId != null) return config;
 
   const auth = slack.authTest();
   if (Result.isFailure(auth)) {
-    logger.warn(
-      `failed to auto-resolve SELF_BOT_ID via auth.test: ${SlackApiError.format(auth.error)}`,
-    );
+    logger.warn(`failed to auto-resolve SELF_BOT_ID via auth.test: ${SlackApiError.format(auth.error)}`);
     return config;
   }
 

@@ -161,8 +161,9 @@ GAS Editor で関数 `cleanupPosts` を手動実行する。時間トリガー�
 ```bash
 pnpm tsc        # 型チェック
 pnpm test       # vitest
-pnpm lint:fix   # eslint
-pnpm format     # dprint
+pnpm lint       # oxlint
+pnpm lint:fix   # oxlint --fix
+pnpm format     # oxfmt
 pnpm build      # esbuild で dist/Code.js を生成
 pnpm clasp:push # ビルド済 dist を GAS へプッシュ
 pnpm deploy     # build + clasp:push

@@ -70,9 +70,9 @@ const buildMocks = (
       options.historyError === true
         ? Result.fail({ kind: 'slack', error: 'forbidden' })
         : Result.succeed({
-          topLevelTs: (options.topLevelTs ?? []).map(ts),
-          truncated: false,
-        }),
+            topLevelTs: (options.topLevelTs ?? []).map(ts),
+            truncated: false,
+          }),
     postMessage,
     listChannelBotMessages: () => Result.succeed({ ts: [], truncated: false }),
     deleteMessage: () => Result.succeed(undefined),

@@ -95,9 +95,7 @@
         "is_locked": false,
         "latest_reply": "1644941488.802049",
         "reply_count": 5,
-        "reply_users": [
-          "U030KFTTF"
-        ],
+        "reply_users": ["U030KFTTF"],
         "reply_users_count": 1,
         "team": "T030KFTTD",
         "text": "plain message",

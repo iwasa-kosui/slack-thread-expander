@@ -71,14 +71,12 @@ const buildMocks = (
     setControlCursor,
   };
   const postMessage = vi.fn(() =>
-    options.postFail
-      ? Result.fail({ kind: 'slack', error: 'not_in_channel' } as const)
-      : Result.succeed(undefined)
+    options.postFail ? Result.fail({ kind: 'slack', error: 'not_in_channel' } as const) : Result.succeed(undefined),
   );
   const searchMentions = vi.fn(() =>
     options.searchFail
       ? Result.fail({ kind: 'slack', error: 'rate_limited' } as const)
-      : Result.succeed({ matches: options.matches ?? [] })
+      : Result.succeed({ matches: options.matches ?? [] }),
   );
   const slack: SlackPort = {
     getChannelName: () => Result.succeed(undefined),
@@ -189,9 +187,7 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([
-        { kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') },
-      ]);
+      expect(outcome.discovered).toEqual([{ kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') }]);
     }
     expect(mocks.registryAdd).toHaveBeenCalledWith(channelA);
     expect(mocks.setEnabled).toHaveBeenCalledWith(channelA, true);
@@ -213,9 +209,7 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([
-        { kind: 'HelpReplied', channel: channelA, ts: ts('1700000200.000000') },
-      ]);
+      expect(outcome.discovered).toEqual([{ kind: 'HelpReplied', channel: channelA, ts: ts('1700000200.000000') }]);
     }
     expect(mocks.registryAdd).not.toHaveBeenCalled();
     expect(mocks.setEnabled).not.toHaveBeenCalled();
@@ -240,9 +234,7 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([
-        { kind: 'HelpReplied', channel: channelB, ts: ts('1700000300.000000') },
-      ]);
+      expect(outcome.discovered).toEqual([{ kind: 'HelpReplied', channel: channelB, ts: ts('1700000300.000000') }]);
     }
     expect(mocks.registryAdd).not.toHaveBeenCalled();
     expect(mocks.discoveryCursorSet).toHaveBeenCalledWith(ts('1700000300.000000'));
@@ -295,9 +287,7 @@ describe('discoverOnMentionedChannels', () => {
     const outcome = run(mocks);
     expect(outcome.kind).toBe('Processed');
     if (outcome.kind === 'Processed') {
-      expect(outcome.discovered).toEqual([
-        { kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') },
-      ]);
+      expect(outcome.discovered).toEqual([{ kind: 'AutoAdded', channel: channelA, ts: ts('1700000100.000000') }]);
     }
     expect(mocks.registryAdd).toHaveBeenCalledTimes(1);
     expect(mocks.setControlCursor).toHaveBeenCalledWith(channelA, ts('1700000100.000000'));

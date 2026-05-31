@@ -27,9 +27,7 @@ describe('Permalink.extractThreadTs', () => {
   });
 
   it('トップレベルメッセージの permalink は undefined を返す', () => {
-    const permalink = parsePermalink(
-      'https://example.slack.com/archives/C03387UAMQR/p1644939337956639',
-    );
+    const permalink = parsePermalink('https://example.slack.com/archives/C03387UAMQR/p1644939337956639');
     expect(Permalink.extractThreadTs(permalink)).toBeUndefined();
   });
 
@@ -41,9 +39,7 @@ describe('Permalink.extractThreadTs', () => {
   });
 
   it('thread_ts の形式が不正なら undefined を返す', () => {
-    const permalink = parsePermalink(
-      'https://example.slack.com/archives/C0/p1?thread_ts=not-a-ts',
-    );
+    const permalink = parsePermalink('https://example.slack.com/archives/C0/p1?thread_ts=not-a-ts');
     expect(Permalink.extractThreadTs(permalink)).toBeUndefined();
   });
 });

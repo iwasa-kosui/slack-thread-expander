@@ -76,9 +76,7 @@ const buildMocks = (
   };
   const setEnabled = vi.fn();
   const setControlCursor = vi.fn();
-  const controlCursorValue: SlackTs | undefined = 'controlCursor' in options
-    ? options.controlCursor
-    : initialCursor;
+  const controlCursorValue: SlackTs | undefined = 'controlCursor' in options ? options.controlCursor : initialCursor;
   const channelControl: ChannelControlPort = {
     isEnabled: () => options.enabled ?? false,
     setEnabled,
