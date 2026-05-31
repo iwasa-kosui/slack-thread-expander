@@ -30,4 +30,9 @@ export const whoamiHandler = (): void => {
   } else {
     logger.warn('auth.test did not return bot_id; this token may not be a bot token');
   }
+  if (userId != null) {
+    logger.info(`SELF_USER_ID: ${userId}`);
+  } else {
+    logger.warn('auth.test did not return user_id; this token may not be a bot token');
+  }
 };
